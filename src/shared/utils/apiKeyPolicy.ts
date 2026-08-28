@@ -9,14 +9,8 @@
  */
 
 import { extractApiKey } from "@/sse/services/auth";
-import {
-  getApiKeyMetadata,
-  getComboByName,
-  isModelAllowedForKey,
-  getApiKeyById,
-} from "@/lib/localDb";
+import { getApiKeyMetadata, isModelAllowedForKey, getApiKeyById } from "@/lib/localDb";
 import { isDashboardSessionAuthenticated } from "./apiAuth";
-import { resolveComboForModel } from "@/lib/db/modelComboMappings";
 import { checkBudget } from "@/domain/costRules";
 import { checkTokenLimits } from "@omniroute/open-sse/services/tokenLimitCounter.ts";
 import {
@@ -31,7 +25,8 @@ import { resolveEndpointCategory } from "@/shared/constants/endpointCategories";
 import { resolveQuotaKeyScope } from "@/lib/quota/quotaKey";
 import { isQuotaModelName, parseQuotaModelName } from "@/lib/quota/quotaModelNaming";
 import { buildApiKeyUsageLimitPolicyRejection } from "@/lib/usage/apiKeyUsageLimits";
-import { ALL_COMBOS_ACCESS_RULE } from "@/shared/constants/comboAccess";
+
+import { isComboAllowedForKey, resolveRequestedComboName } from "./comboAccess";
 
 // Default to no per-key request cap. API keys can still opt into explicit
 // limits via Settings/API Keys, while provider/account quota controls remain
@@ -173,25 +168,6 @@ function isWithinSchedule(schedule: AccessSchedule): boolean {
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-function normalizeComboAccessName(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return trimmed.startsWith("combo/") ? trimmed.slice(6).trim() || trimmed : trimmed;
-}
-
-function matchesComboAccessRule(comboName: string, requestedModel: string, rule: string): boolean {
-  if (rule === ALL_COMBOS_ACCESS_RULE) return true;
-  const normalizedRule = normalizeComboAccessName(rule);
-  if (!normalizedRule) return false;
-  return (
-    normalizedRule === comboName ||
-    rule === requestedModel ||
-    `combo/${normalizedRule}` === requestedModel
-  );
-}
-
 function isAnthropicMessagesRequest(request: Request): boolean {
   if (request.headers.has("anthropic-version")) return true;
 
@@ -229,32 +205,6 @@ function policyErrorResponse(
       headers: { "Content-Type": "application/json" },
     }
   );
-}
-
-async function resolveRequestedComboName(modelStr: string): Promise<string | null> {
-  const exact = await getComboByName(modelStr);
-  if (exact && typeof exact.name === "string") return exact.name;
-
-  if (modelStr.startsWith("combo/")) {
-    const withoutPrefix = modelStr.slice(6);
-    const prefixed = await getComboByName(withoutPrefix);
-    if (prefixed && typeof prefixed.name === "string") return prefixed.name;
-  }
-
-  const mapped = await resolveComboForModel(modelStr);
-  const mappedName = normalizeComboAccessName(mapped?.name);
-  return mappedName;
-}
-
-async function isComboAllowedForKey(
-  allowedCombos: string[],
-  modelStr: string
-): Promise<{ allowed: boolean; comboName: string | null }> {
-  const comboName = await resolveRequestedComboName(modelStr);
-  if (!comboName) return { allowed: true, comboName: null };
-
-  const allowed = allowedCombos.some((rule) => matchesComboAccessRule(comboName, modelStr, rule));
-  return { allowed, comboName };
 }
 
 function quotaPolicyResponse(message: string, code: string): Response {
