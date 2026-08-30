@@ -751,3 +751,46 @@ test("enforceApiKeyPolicy enforces request-per-minute limits and returns success
   assert.equal(second.rejection.status, 429);
   assert.match(await readErrorMessage(second.rejection), /Request limit exceeded/);
 });
+
+test("isModelAllowedForKey (catalog listing path) permits a combo allowed via allowedCombos, not just allowedModels", async () => {
+  // Regression for the /v1/models empty-catalog bug: a key with
+  // modelAccessMode:"restricted", allowedModels:[] (deny-all for direct
+  // provider models — the OMPR contract) and allowedCombos:["combo/*"]
+  // must still see its combo in the catalog listing. isModelAllowedForKey
+  // backs GET /v1/models filtering and previously only consulted
+  // allowedModels, so restricted keys saw an empty list even though the
+  // same combo request succeeds at execution time via enforceApiKeyPolicy.
+  const restrictedComboKey = await createKeyWithPolicy({
+    modelAccessMode: "restricted",
+    allowedModels: [],
+    allowedCombos: ["combo/*"],
+  });
+  await combosDb.createCombo({
+    name: "colotool-default",
+    strategy: "priority",
+    models: ["anthropic/claude-3-5-sonnet"],
+  });
+
+  const allowed = await apiKeysDb.isModelAllowedForKey(restrictedComboKey.key, "colotool-default");
+  assert.equal(allowed, true);
+
+  // A combo NOT covered by the key's allowedCombos rule stays denied.
+  const namedComboKey = await createKeyWithPolicy({
+    modelAccessMode: "restricted",
+    allowedModels: [],
+    allowedCombos: ["fast-chat"],
+  });
+  const deniedForNamedKey = await apiKeysDb.isModelAllowedForKey(
+    namedComboKey.key,
+    "colotool-default"
+  );
+  assert.equal(deniedForNamedKey, false);
+
+  // A non-combo model string is unaffected: still governed by allowedModels
+  // alone, restricted + [] stays deny-all.
+  const deniedNonCombo = await apiKeysDb.isModelAllowedForKey(
+    restrictedComboKey.key,
+    "openai/gpt-4.1"
+  );
+  assert.equal(deniedNonCombo, false);
+});
