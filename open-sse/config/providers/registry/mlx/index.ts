@@ -4,6 +4,8 @@ import { buildOpenAiCompatibleRegistryEntry } from "../../shared.ts";
 // MLX ports (deterministic, documented)
 const MLX_GEMMA_PORT = 11435;
 const MLX_QWEN_PORT = 11436;
+const MLX_CODER_PORT = 8081;
+const MLX_QWEN35_PORT = 8080;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Memory-aware context windows for MLX models on 24GB unified memory.
@@ -63,4 +65,83 @@ export const mlxQwenProvider: RegistryEntry = buildOpenAiCompatibleRegistryEntry
     },
   ],
   timeoutMs: 120000, // Longer timeout for model loading
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MLX Qwen2.5 Coder 1.5B Provider
+// Model: Qwen/Qwen2.5-Coder-1.5B-Instruct (bf16, served by mlx_lm.server)
+// Measured locally: ~75 tok/s generation, ~3.1 GB peak memory.
+//
+// LIFECYCLE: this endpoint is NOT always up. The server is started on demand by
+// the SwiftBar plugin (00-mac/scripts/swiftbar/mlx-coder.10s.sh), and starting
+// the mlx-qwen35 model stops it — only one MLX model runs at a time. A combo
+// targeting this provider must tolerate a refused connection when it is down.
+//
+// Host is the literal 127.0.0.1 rather than "localhost": the server binds IPv4
+// only, while "localhost" resolves to ::1 first on this machine.
+export const mlxCoderProvider: RegistryEntry = buildOpenAiCompatibleRegistryEntry({
+  id: "mlx-coder",
+  alias: "mlx-coder",
+  baseUrl: `http://127.0.0.1:${MLX_CODER_PORT}/v1`,
+  modelsUrl: `http://127.0.0.1:${MLX_CODER_PORT}/v1/models`,
+  passthroughModels: false,
+  defaultContextLength: MLX_DEFAULT_CONTEXT_LIMIT,
+  models: [
+    {
+      id: "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      name: "Qwen2.5 Coder 1.5B Instruct (MLX)",
+      toolCalling: false,
+      supportsVision: false,
+      supportsReasoning: false,
+      // Native max_position_embeddings; the 3.1 GB footprint leaves ample room.
+      contextLength: 32768,
+      maxOutputTokens: 8192,
+    },
+  ],
+  timeoutMs: 120000,
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MLX Qwen3.6 35B A3B Provider
+// Model: 00-mac/models/Qwen3.6-35B-A3B-4bit (qwen3_5_moe, 40 layers, 4-bit),
+// served by mlx_vlm.server — it is a VLM (config.json carries a vision_config).
+// Measured locally 2026-08-31: ~75-88 tok/s decode at short context, ~21 GB peak.
+//
+// LIFECYCLE: same on-demand SwiftBar plugin as mlx-coder
+// (00-mac/scripts/swiftbar/mlx-qwen35.10s.sh). Starting either model stops the
+// other — only one MLX model holds the GPU at a time — so a combo targeting
+// this provider must tolerate a refused connection when it is down.
+//
+// The model id is the literal on-disk path because that is what --model gets;
+// /v1/models echoes it back verbatim, and the gateway must match it exactly.
+//
+// Host is the literal 127.0.0.1 rather than "localhost": the server binds IPv4
+// only, while "localhost" resolves to ::1 first on this machine.
+export const mlxQwen35Provider: RegistryEntry = buildOpenAiCompatibleRegistryEntry({
+  id: "mlx-qwen35",
+  alias: "mlx-qwen35",
+  baseUrl: `http://127.0.0.1:${MLX_QWEN35_PORT}/v1`,
+  modelsUrl: `http://127.0.0.1:${MLX_QWEN35_PORT}/v1/models`,
+  passthroughModels: false,
+  defaultContextLength: MLX_DEFAULT_CONTEXT_LIMIT,
+  models: [
+    {
+      id: "/Users/ferrer/ai/HUB/00-mac/models/Qwen3.6-35B-A3B-4bit",
+      name: "Qwen3.6 35B A3B 4bit (MLX)",
+      // Native tool calls verified: finish_reason "tool_calls" with a parsed
+      // arguments object, not a prompt-emulated <tool> block.
+      toolCalling: true,
+      supportsVision: true,
+      // The server never populates reasoning_content in this configuration.
+      supportsReasoning: false,
+      // The server's --max-kv-size ceiling, not the model's native 262144.
+      // Throughput degrades hard well before it on 64 GB (measured 2026-08-23:
+      // 8.2 tok/s at 32k, 4.8 at 48k, 2.6 at 64k — see 00-mac bitacora
+      // 2026-08-23-omlx-tuning-ornith35b.md). Lower this to 32768 if the
+      // router keeps sending prompts into the slow zone.
+      contextLength: 163840,
+      maxOutputTokens: 32768,
+    },
+  ],
+  timeoutMs: 120000,
 });

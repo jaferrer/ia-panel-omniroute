@@ -75,7 +75,6 @@ export function getProviderConnectionFamilyIds(providerId: unknown): readonly st
 
 // Web / Cookie Providers
 
-
 // API Key Providers
 
 // Sub-categories within APIKEY_PROVIDERS (used by dashboard and catalog views).
@@ -145,7 +144,6 @@ export const AGGREGATOR_PROVIDER_IDS = new Set([
   "helixmind",
   "tabitoken",
   "logfare",
-
 ]);
 
 export const ENTERPRISE_CLOUD_PROVIDER_IDS = new Set([
@@ -218,6 +216,8 @@ export function isLocalProvider(providerId: unknown): boolean {
 export const SELF_HOSTED_CHAT_PROVIDER_IDS = new Set([
   "mlx-gemma",
   "mlx-qwen",
+  "mlx-coder",
+  "mlx-qwen35",
   "ollama-local",
   "lm-studio",
   "vllm",
@@ -274,6 +274,8 @@ const BULK_API_KEY_EXCLUDED = new Set([
   "vertex-partner",
   "mlx-gemma",
   "mlx-qwen",
+  "mlx-coder",
+  "mlx-qwen35",
   "ollama-local",
   "grok-web",
   "perplexity-web",

@@ -29,6 +29,32 @@ export const LOCAL_PROVIDERS = {
     localDefault: "http://localhost:11436/v1",
     passthroughModels: false,
   },
+  "mlx-coder": {
+    id: "mlx-coder",
+    alias: "mlx-coder",
+    name: "MLX Qwen2.5 Coder 1.5B",
+    icon: "memory",
+    color: "#38BDF8",
+    textIcon: "MC",
+    website: "https://github.com/ml-explore/mlx",
+    authHint:
+      "No API key required. Runs mlx-lm server locally on port 8081, started on demand by the SwiftBar plugin — starting the MLX Qwen 35B model stops it, since only one MLX model runs at a time. Requests fail with a refused connection while it is down. Model: Qwen/Qwen2.5-Coder-1.5B-Instruct (~3.1GB peak memory).",
+    localDefault: "http://127.0.0.1:8081/v1",
+    passthroughModels: false,
+  },
+  "mlx-qwen35": {
+    id: "mlx-qwen35",
+    alias: "mlx-qwen35",
+    name: "MLX Qwen3.6 35B A3B",
+    icon: "memory",
+    color: "#22C55E",
+    textIcon: "M3",
+    website: "https://github.com/ml-explore/mlx",
+    authHint:
+      "No API key required. Runs mlx_vlm.server locally on port 8080, started on demand by the SwiftBar plugin — starting the MLX Coder 1.5B model stops it, since only one MLX model runs at a time. Requests fail with a refused connection while it is down. Model: Qwen3.6-35B-A3B-4bit (~21GB peak memory), vision and tool calling supported.",
+    localDefault: "http://127.0.0.1:8080/v1",
+    passthroughModels: false,
+  },
   "ollama-local": {
     id: "ollama-local",
     alias: "ollama",

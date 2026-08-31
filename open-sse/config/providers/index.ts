@@ -5,6 +5,7 @@ import { aimlapiProvider } from "./registry/aimlapi/index.ts";
 import { byteplusProvider } from "./registry/byteplus/index.ts";
 import { mlxGemmaProvider } from "./registry/mlx/index.ts";
 import { mlxQwenProvider } from "./registry/mlx/index.ts";
+import { mlxCoderProvider, mlxQwen35Provider } from "./registry/mlx/index.ts";
 import { ollama_cloudProvider } from "./registry/ollama-cloud/index.ts";
 import { syntheticProvider } from "./registry/synthetic/index.ts";
 import { ideogramProvider } from "./registry/ideogram/index.ts";
@@ -271,6 +272,8 @@ export const REGISTRY: Record<string, RegistryEntry> = {
   aimlapi: aimlapiProvider,
   "mlx-gemma": mlxGemmaProvider,
   "mlx-qwen": mlxQwenProvider,
+  "mlx-coder": mlxCoderProvider,
+  "mlx-qwen35": mlxQwen35Provider,
   "ollama-cloud": ollama_cloudProvider,
   synthetic: syntheticProvider,
   ideogram: ideogramProvider,
