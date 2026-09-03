@@ -292,3 +292,68 @@ test("#10788 nvidia z-ai/glm-5.2 declares reasoning with an empty tier list (bin
   assert.equal(row.supportsReasoning, true);
   assert.deepEqual(row.supportedThinkingEfforts, []);
 });
+
+// ─── Muse Spark 1.3 (GO 1.3-contributor live on zen/go/v1/models) ────────────
+
+const SPARK13_ALIASES = [
+  { alias: "muse-spark-1.3-contributor-minimal", effort: "minimal" },
+  { alias: "muse-spark-1.3-contributor-low", effort: "low" },
+  { alias: "muse-spark-1.3-contributor-medium", effort: "medium" },
+  { alias: "muse-spark-1.3-contributor-high", effort: "high" },
+  { alias: "muse-spark-1.3-contributor-xhigh", effort: "xhigh" },
+] as const;
+
+test("spark-1.3 catalog: GO exposes base + effort aliases on openai-responses", () => {
+  const models = REGISTRY["opencode-go"]?.models ?? [];
+  for (const id of ["muse-spark-1.3-contributor", ...SPARK13_ALIASES.map((a) => a.alias)]) {
+    const entry = models.find((m) => m.id === id);
+    assert.ok(entry, `opencode-go must expose ${id}`);
+    assert.equal(entry.targetFormat, "openai-responses", `${id} must use openai-responses`);
+    assert.equal(entry.supportsReasoning, true, `${id} must be reasoning-capable`);
+  }
+});
+
+for (const { alias, effort } of SPARK13_ALIASES) {
+  test(`spark-1.3 parseEffortLevel: ${alias} → ${effort}`, () => {
+    assert.deepEqual(parseEffortLevel(alias), {
+      baseModel: "muse-spark-1.3-contributor",
+      effort,
+    });
+  });
+}
+
+test("spark-1.3 parseEffortLevel: max tier stays null (mirrors 1.2)", () => {
+  assert.equal(parseEffortLevel("muse-spark-1.3-contributor-max"), null);
+});
+
+test("spark-1.3 transformRequest: alias passes through verbatim, no flat reasoning_effort", () => {
+  const executor = new OpencodeExecutor("opencode-go");
+  const body = {
+    model: "muse-spark-1.3-contributor-xhigh",
+    messages: [{ role: "user", content: "hi" }],
+  };
+  const out = executor.transformRequest(
+    "muse-spark-1.3-contributor-xhigh",
+    body,
+    true,
+    CREDENTIALS
+  );
+  assert.equal(out.model, "muse-spark-1.3-contributor-xhigh");
+  assert.equal(out.reasoning_effort, undefined);
+});
+
+test("spark-1.3 catalog: aliases stay GO-only; zen exposes the -free base", () => {
+  const zenIds = new Set(zenModelIds());
+  for (const { alias } of SPARK13_ALIASES) {
+    assert.equal(zenIds.has(alias), false, `opencode-zen must not expose ${alias}`);
+  }
+  assert.equal(
+    zenIds.has("muse-spark-1.3-contributor"),
+    false,
+    "paid GO base must not leak to zen"
+  );
+  const zenModels = REGISTRY["opencode-zen"]?.models ?? [];
+  const free = zenModels.find((m) => m.id === "muse-spark-1.3-contributor-free");
+  assert.ok(free, "opencode-zen must expose muse-spark-1.3-contributor-free");
+  assert.equal(free.targetFormat, "openai-responses");
+});

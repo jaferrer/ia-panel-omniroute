@@ -77,6 +77,14 @@ export const opencode_zenProvider: RegistryEntry = {
       supportsReasoning: true,
       targetFormat: "openai-responses",
     },
+    // Live-verified 2026-09-03: listed on https://opencode.ai/zen/v1/models
+    // alongside 1.2-contributor-free. Same Responses-API contract.
+    {
+      id: "muse-spark-1.3-contributor-free",
+      name: "Muse Spark 1.3 Contributor Free",
+      supportsReasoning: true,
+      targetFormat: "openai-responses",
+    },
 
     // ── DeepSeek ────────────────────────────────────────────────
     // #10788: same tier vocabulary as opencode-go's DeepSeek rows — the Zen
